@@ -41,4 +41,59 @@ while True:
         
 c_socket.close()
             
-#CLIENT SIDE            
+#CLIENT SIDE  
+
+
+import socket,cv2,pickle,struct
+client_socket = socket.socket (socket.AF_INET ,socket.SOCK_STREAM)#client socket created to accept data
+s_socket = socket.socket (socket.AF_INET ,socket.SOCK_STREAM)#server socket created to send data
+host_ip = '192.168.43.40'
+port = 8888
+client_socket.connect((host_ip,port))#socket become client to receive data with client ip and port
+s_socket.bind(('192.168.43.24',8888))#socket become server to send data with server ip and port
+s_socket.listen(5)
+data = b"" # initialize data as bytes
+payload_size =struct.calcsize("Q")# unsigned Q take long integer of 8 bytes
+while True:
+    c_socket ,addr = s_socket.accept()#accepting client data
+    print('GOT CONNECTION FROM : ',addr)
+    vid = cv2.VideoCapture(0)#taking picture from webcam
+    while(vid.isOpened()):
+        img , frame = vid.read()#storing picture from webcam
+        a = pickle.dumps(frame)#converting object into bytes
+        message = struct .pack("Q",len(a))+a#interpret bytes as packed binary data
+   
+        c_socket.sendall(message)#sending packed binary data to other system
+    
+        while len(data) < payload_size:
+            packet = client_socket.recv(4*1024)#receiving packed binary data
+            if not packet:
+                break
+            data += packet#storing packed binary data
+        
+        packed_msg_size = data[:payload_size]#first eight byte contain packed message
+        data = data [payload_size :]#rest of byte is our data
+        msg_size=struct.unpack("P" , packed_msg_size)[0]#extracting message size
+    
+        while len (data) < msg_size:
+            data += client_socket.recv(4*1024)
+        frame_data = data[:msg_size]#extracting first frame data
+        data = data [msg_size:]
+        frame = pickle.loads(frame_data)#converting bytes into data
+        if client_socket:
+            cv2.imshow("RECEived" , frame)#displaying receiving data
+        
+            
+            if cv2.waitKey(1)==13:
+               
+                break
+    
+
+
+    
+client_socket.close()
+                
+       
+       
+           
+
